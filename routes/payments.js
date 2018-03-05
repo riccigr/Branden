@@ -5,7 +5,7 @@ module.exports = function(app){
 
     app.post('/payments', function(req, res){
 
-        console.log('request received')
+        console.log('request received');
 
         req.assert('method', 'method is mandatory').notEmpty();
         req.assert('currency', 'currency is mandatory').notEmpty();
@@ -20,7 +20,7 @@ module.exports = function(app){
 
         var payment = req.body;
 
-        payment.status = 'created';
+        payment.status = 'CREATED';
         payment.create_date = new Date;
 
         var connection = app.database.connectionFactory();
@@ -30,6 +30,7 @@ module.exports = function(app){
             if(err){
                 console.log('Internal Error #########' + err);
                 res.status(500).send('Internal error, please contact support team.');
+                return;
             }
 
             console.log('request saved');
@@ -38,5 +39,34 @@ module.exports = function(app){
         });
 
         connection.end();
+    });
+
+    app.put('/payments/:id', function(req, res){
+
+        console.log('update received');
+
+        var payment = {};
+        var id = req.params.id;
+
+        payment.status = 'CONFIRMED';
+        payment.id = id;
+        payment.update_date = new Date;
+
+        var connection = app.database.connectionFactory();
+        var paymentDao = new app.database.PaymentDAO(connection);
+
+        paymentDao.update(payment, function(err, result){
+            if(err){
+                console.log('Internal Error #########' + err);
+                res.status(500).send('Internal error, please contact support team.');
+                return;
+            }
+
+            console.log('update saved');
+            res.json(payment);
+        });
+
+        connection.end();
+
     });
 };
