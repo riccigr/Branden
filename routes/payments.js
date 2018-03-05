@@ -1,11 +1,22 @@
 module.exports = function(app){
-    app.get('/payfast/pay', function(req, res){
+    app.get('/payments', function(req, res){
         res.send('OK');
     });
 
-    app.post('/payfast/pay', function(req, res){
+    app.post('/payments', function(req, res){
 
         console.log('request received')
+
+        req.assert('method', 'method is mandatory').notEmpty();
+        req.assert('currency', 'currency is mandatory').notEmpty();
+        req.assert('value', 'value is mandatory and must be a decimal.').notEmpty().isFloat;
+
+        var errors = req.validationErrors();
+        if(errors){
+            console.log('Client error ===============>' + errors);
+            res.status(400).send(errors);
+            return;
+        }
 
         var payment = req.body;
 
@@ -17,12 +28,13 @@ module.exports = function(app){
 
         paymentDao.save(payment, function(err, result){
             if(err){
-                console.log('Error #########' + err);
-                res.status(400).send('Error');
+                console.log('Internal Error #########' + err);
+                res.status(500).send('Internal error, please contact support team.');
             }
 
             console.log('request saved');
-            res.json(payment);
+            res.location('/payments/' + result.insertId);
+            res.status(201).json(payment);
         });
 
         connection.end();
