@@ -69,4 +69,33 @@ module.exports = function(app){
         connection.end();
 
     });
+
+    app.delete('/payments/:id', function(req, res){
+
+        console.log('delete received');
+
+        var payment = {};
+        var id = req.params.id;
+
+        payment.status = 'CANCELED';
+        payment.id = id;
+        payment.update_date = new Date;
+
+        var connection = app.database.connectionFactory();
+        var paymentDao = new app.database.PaymentDAO(connection);
+
+        paymentDao.update(payment, function(err, result){
+            if(err){
+                console.log('Internal Error #########' + err);
+                res.status(500).send('Internal error, please contact support team.');
+                return;
+            }
+
+            console.log('update saved');
+            res.status(204).json(payment);
+        });
+
+        connection.end();
+
+    });
 };
