@@ -7,9 +7,9 @@ module.exports = function(app){
 
         console.log('request received');
 
-        req.assert('method', 'method is mandatory').notEmpty();
-        req.assert('currency', 'currency is mandatory').notEmpty();
-        req.assert('value', 'value is mandatory and must be a decimal.').notEmpty().isFloat;
+        req.assert('payment.method', 'method is mandatory').notEmpty();
+        req.assert('payment.currency', 'currency is mandatory').notEmpty().len(3,3);
+        req.assert('payment.value', 'value is mandatory and must be a decimal.').notEmpty().isFloat;
 
         var errors = req.validationErrors();
         if(errors){
@@ -18,7 +18,7 @@ module.exports = function(app){
             return;
         }
 
-        var payment = req.body;
+        var payment = req.body["payment"];
 
         payment.status = 'CREATED';
         payment.create_date = new Date;
@@ -33,9 +33,66 @@ module.exports = function(app){
                 return;
             }
 
+            payment.id = result.insertId;
+            res.location('/payments/' + payment.id);
+
             console.log('request saved');
-            res.location('/payments/' + result.insertId);
-            res.status(201).json(payment);
+
+            if(payment.method == "card"){
+                console.log('request contains card');
+
+                var card = req.body["card"];
+                var cardClient = new app.services.CardClient();
+
+                cardClient.authorize(card, function(cardError, cardReq, cardRes, cardResult){
+                    if(cardError){
+                        console.log(cardError);
+                        res.status(400).send(cardError);
+                        return;
+                    }
+                    var response = {
+                        "payment" : payment,
+                        "card" : cardResult,
+                        links : [
+                            {
+                                "href": "http://localhost:3000/payments/" + payment.id,
+                                "rel": "Confirmation",
+                                "method": "PUT"
+                            },
+                            {
+                                "href": "http://localhost:3000/payments/" + payment.id,
+                                "rel": "Cancellation",
+                                "method": "DELETE"
+                            }
+                        ]
+                    };
+
+                    res.status(201).json(response);
+                    return;
+                });
+
+
+            }else{
+                console.log('commom request');
+                var response = {
+                    "payment" : payment,
+                    links : [
+                        {
+                            "href": "http://localhost:3000/payments/" + payment.id,
+                            "rel": "Confirmation",
+                            "method": "PUT"
+                        },
+                        {
+                            "href": "http://localhost:3000/payments/" + payment.id,
+                            "rel": "Cancellation",
+                            "method": "DELETE"
+                        }
+                    ]
+                };
+
+                res.status(201).json(response);
+            }
+
         });
 
         connection.end();
