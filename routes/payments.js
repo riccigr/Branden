@@ -1,11 +1,13 @@
+var constants = require('../lib/constants');
+
 module.exports = function(app){
 
     app.get('/payments/:id', function(req, res){
         console.log('search received...');
 
         var id = req.params.id;
-
         var cache = app.database.cache.memcachedClient();
+
         cache.get('payment-' + id, function(cacheErr, cacheResult){
             if(cacheErr || !cacheResult){
                 console.log('MISS - ' + id);
@@ -17,11 +19,11 @@ module.exports = function(app){
                 paymentDao.getById(id, function(err, result){
                     if(err){
                         console.error(err);
-                        res.status(500).send('Internal error, please contact support team.');
+                        res.status(500).send(constants.INTERNAL_ERROR_MSG);
                         return;
                     }
                     if(Object.keys(result).length === 0){
-                        console.log('404 for this search');
+                        console.log('Could not find this item: ' + id );
                         res.status(404).send();
                         return;
                     }
@@ -30,16 +32,15 @@ module.exports = function(app){
                     res.json(result);
                 });
             }else{
-                console.log('HIT - ' + id + JSON.stringify(cacheResult));
+                console.log('HIT - ' + id + ' ===>' + JSON.stringify(cacheResult));
                 res.json(cacheResult);
                 return;
             }
         });
     });
-    
+
 
     app.post('/payments', function(req, res){
-
         console.log('request received...');
 
         req.assert('payment.method', 'method is mandatory').notEmpty();
@@ -48,14 +49,14 @@ module.exports = function(app){
 
         var errors = req.validationErrors();
         if(errors){
-            console.log('Client error ===============>' + errors);
+            console.error(constants.CLIENT_ERROR_LOG + errors);
             res.status(400).send(errors);
             return;
         }
 
         var payment = req.body["payment"];
 
-        payment.status = 'CREATED';
+        payment.status = constants.STATUS_CREATED;
         payment.create_date = new Date;
 
         var connection = app.database.connectionFactory();
@@ -63,15 +64,13 @@ module.exports = function(app){
 
         paymentDao.save(payment, function(err, result){
             if(err){
-                console.log('Internal Error #########' + err);
-                res.status(500).send('Internal error, please contact support team.');
+                console.error(constants.INTERNAL_ERROR_LOG + err);
+                res.status(500).send(constants.INTERNAL_ERROR_MSG);
                 return;
             }
 
             payment.id = result.insertId;
             res.location('/payments/' + payment.id);
-
-            console.log('request saved');
 
             var cache = app.database.cache.memcachedClient();
             cache.set('payment-' + payment.id, req.body, 100000, function(cacheError) {
@@ -79,9 +78,24 @@ module.exports = function(app){
                     console.error(cacheError);
                 }else{
                     console.log('new key - ' + payment.id);
-                    console.log()
                 }
             });
+
+            var response = {
+                "payment" : payment,
+                "links" : [
+                    {
+                        "href": "http://localhost:3000/payments/" + payment.id,
+                        "rel": "Confirmation",
+                        "method": "PUT"
+                    },
+                    {
+                        "href": "http://localhost:3000/payments/" + payment.id,
+                        "rel": "Cancellation",
+                        "method": "DELETE"
+                    }
+                ]
+            };
 
             if(payment.method == "card"){
                 console.log('request contains card');
@@ -95,51 +109,14 @@ module.exports = function(app){
                         res.status(400).send(cardError);
                         return;
                     }
-                    var response = {
-                        "payment" : payment,
-                        "card" : cardResult,
-                        links : [
-                            {
-                                "href": "http://localhost:3000/payments/" + payment.id,
-                                "rel": "Confirmation",
-                                "method": "PUT"
-                            },
-                            {
-                                "href": "http://localhost:3000/payments/" + payment.id,
-                                "rel": "Cancellation",
-                                "method": "DELETE"
-                            }
-                        ]
-                    };
+                    response.card = cardResult;
 
                     res.status(201).json(response);
-                    return;
                 });
-
-
-            }else{
-                console.log('commom request');
-                var response = {
-                    "payment" : payment,
-                    links : [
-                        {
-                            "href": "http://localhost:3000/payments/" + payment.id,
-                            "rel": "Confirmation",
-                            "method": "PUT"
-                        },
-                        {
-                            "href": "http://localhost:3000/payments/" + payment.id,
-                            "rel": "Cancellation",
-                            "method": "DELETE"
-                        }
-                    ]
-                };
-
-                res.status(201).json(response);
             }
 
         });
-
+        console.log('request saved!');
         connection.end();
     });
 
@@ -150,7 +127,7 @@ module.exports = function(app){
         var payment = {};
         var id = req.params.id;
 
-        payment.status = 'CONFIRMED';
+        payment.status = constants.STATUS_CONFIRMED;
         payment.id = id;
         payment.update_date = new Date;
 
@@ -159,8 +136,8 @@ module.exports = function(app){
 
         paymentDao.update(payment, function(err, result){
             if(err){
-                console.log('Internal Error #########' + err);
-                res.status(500).send('Internal error, please contact support team.');
+                console.error(constants.INTERNAL_ERROR_LOG + err);
+                res.status(500).send(constants.INTERNAL_ERROR_MSG);
                 return;
             }
 
@@ -174,7 +151,7 @@ module.exports = function(app){
 
     app.delete('/payments/:id', function(req, res){
 
-        console.log('delete received');
+        console.log('delete received...');
 
         var payment = {};
         var id = req.params.id;
@@ -188,12 +165,12 @@ module.exports = function(app){
 
         paymentDao.update(payment, function(err, result){
             if(err){
-                console.log('Internal Error #########' + err);
-                res.status(500).send('Internal error, please contact support team.');
+                console.error(constants.INTERNAL_ERROR_LOG + err);
+                res.status(500).send(constants.INTERNAL_ERROR_MSG);
                 return;
             }
 
-            console.log('update saved');
+            console.log('update saved!');
             res.status(204).json(payment);
         });
 
