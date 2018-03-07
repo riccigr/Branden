@@ -5,27 +5,38 @@ module.exports = function(app){
 
         var id = req.params.id;
 
-        var connection = app.database.connectionFactory();
-        var paymentDao = new app.database.PaymentDAO(connection);
+        var cache = app.database.cache.memcachedClient();
+        cache.get('payment-' + id, function(cacheErr, cacheResult){
+            if(cacheErr || !cacheResult){
+                console.log('MISS - ' + id);
+                console.log('going to database...');
 
-        paymentDao.getById(id, function(err, result){
-            if(err){
-                console.error(err);
-                res.status(500).send('Internal error, please contact support team.');
+                var connection = app.database.connectionFactory();
+                var paymentDao = new app.database.PaymentDAO(connection);
+
+                paymentDao.getById(id, function(err, result){
+                    if(err){
+                        console.error(err);
+                        res.status(500).send('Internal error, please contact support team.');
+                        return;
+                    }
+                    if(Object.keys(result).length === 0){
+                        console.log('404 for this search');
+                        res.status(404).send();
+                        return;
+                    }
+
+                    console.log('search ok!');
+                    res.json(result);
+                });
+            }else{
+                console.log('HIT - ' + id + JSON.stringify(cacheResult));
+                res.json(cacheResult);
                 return;
             }
-            if(Object.keys(result).length === 0){
-                console.log('404 for this search');
-                res.status(404).send();
-                return;
-            }
-
-
-            console.log('search ok!');
-            res.send(result);
         });
-
     });
+    
 
     app.post('/payments', function(req, res){
 
@@ -61,6 +72,16 @@ module.exports = function(app){
             res.location('/payments/' + payment.id);
 
             console.log('request saved');
+
+            var cache = app.database.cache.memcachedClient();
+            cache.set('payment-' + payment.id, req.body, 100000, function(cacheError) {
+                if(cacheError){
+                    console.error(cacheError);
+                }else{
+                    console.log('new key - ' + payment.id);
+                    console.log()
+                }
+            });
 
             if(payment.method == "card"){
                 console.log('request contains card');
