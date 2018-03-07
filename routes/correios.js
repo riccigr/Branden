@@ -2,7 +2,7 @@ module.exports = (app) => {
     app.post('/correios/deadline', (req, res) => {
         var data = req.body;
 
-        var correiosSoapClient = new app.services.CorreiosSoapClient();
+        var correiosSoapClient = new app.services.correiosSoapClient();
         correiosSoapClient.calcDeadline(data, (err, result) => {
             if(err){
                 console.log(err);

@@ -101,7 +101,7 @@ module.exports = function(app){
                 console.log('request contains card');
 
                 var card = req.body["card"];
-                var cardClient = new app.services.CardClient();
+                var cardClient = new app.services.cardClient();
 
                 cardClient.authorize(card, function(cardError, cardReq, cardRes, cardResult){
                     if(cardError){
@@ -156,7 +156,7 @@ module.exports = function(app){
         var payment = {};
         var id = req.params.id;
 
-        payment.status = 'CANCELED';
+        payment.status = constants.STATUS_CANCELLED;
         payment.id = id;
         payment.update_date = new Date;
 

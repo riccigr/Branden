@@ -1,10 +1,10 @@
 var soap = require('soap');
 
-function CorreiosSoapClient(){
+function correiosSoapClient(){
     this._url = 'http://ws.correios.com.br/calculador/CalcPrecoPrazo.asmx?wsdl';
 }
 
-CorreiosSoapClient.prototype.calcDeadline = function(args, callback){
+correiosSoapClient.prototype.calcDeadline = function(args, callback){
     soap.createClient(this._url, function(err, client) {
         console.log('post to soap correios dealine');
         client.CalcPrazo(args, callback);
@@ -13,5 +13,5 @@ CorreiosSoapClient.prototype.calcDeadline = function(args, callback){
 
 
 module.exports = function(){
-    return CorreiosSoapClient;
+    return correiosSoapClient;
 }
