@@ -1,4 +1,4 @@
-curl -X POST http://localhost:3000/upload/receipt -v
--H "filename : receipt101.jpg"
--H "Content-type : application/octet-stream"
---data-binary @receipt.jpg
+curl -X POST http://localhost:3000/upload/receipt -v \
+-H "filename : receipt101.txt" \
+-H "Content-type : application/octet-stream" \
+--data-binary @receipt.txt

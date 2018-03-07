@@ -1,11 +1,35 @@
 module.exports = function(app){
-    app.get('/payments', function(req, res){
-        res.send('OK');
+
+    app.get('/payments/:id', function(req, res){
+        console.log('search received...');
+
+        var id = req.params.id;
+
+        var connection = app.database.connectionFactory();
+        var paymentDao = new app.database.PaymentDAO(connection);
+
+        paymentDao.getById(id, function(err, result){
+            if(err){
+                console.error(err);
+                res.status(500).send('Internal error, please contact support team.');
+                return;
+            }
+            if(Object.keys(result).length === 0){
+                console.log('404 for this search');
+                res.status(404).send();
+                return;
+            }
+
+
+            console.log('search ok!');
+            res.send(result);
+        });
+
     });
 
     app.post('/payments', function(req, res){
 
-        console.log('request received');
+        console.log('request received...');
 
         req.assert('payment.method', 'method is mandatory').notEmpty();
         req.assert('payment.currency', 'currency is mandatory').notEmpty().len(3,3);

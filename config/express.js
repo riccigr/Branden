@@ -9,6 +9,7 @@ module.exports = function(){
     app.use(bodyParser.json());
     app.use(expressValidator());
 
+    //--TODO review folder structure
     consign()
         .include('routes')
         .then('database')
