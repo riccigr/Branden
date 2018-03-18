@@ -21,7 +21,8 @@ module.exports = function(){
 
     //--TODO review folder structure
     consign()
-        .include('routes')
+        .include('api')
+        .then('routes')
         .then('database')
         .then('services')
         .into(app);
